@@ -1,4 +1,4 @@
-﻿namespace FlieManager.ViewModels;
+﻿namespace FileManager.ViewModels;
 
 public partial class MainWindowViewModel : ViewModelBase
 {

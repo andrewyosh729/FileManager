@@ -1,6 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlieManager", "FlieManager\FlieManager.csproj", "{0785CA10-3C0D-41E4-9329-72377DD48482}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FileManager", "FileManager\FileManager.csproj", "{0785CA10-3C0D-41E4-9329-72377DD48482}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

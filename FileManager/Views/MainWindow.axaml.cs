@@ -1,6 +1,6 @@
 using Avalonia.Controls;
 
-namespace FlieManager.Views;
+namespace FileManager.Views;
 
 public partial class MainWindow : Window
 {

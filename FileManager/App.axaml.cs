@@ -4,10 +4,10 @@ using Avalonia.Data.Core;
 using Avalonia.Data.Core.Plugins;
 using System.Linq;
 using Avalonia.Markup.Xaml;
-using FlieManager.ViewModels;
-using FlieManager.Views;
+using FileManager.ViewModels;
+using FileManager.Views;
 
-namespace FlieManager;
+namespace FileManager;
 
 public partial class App : Application
 {

@@ -1,7 +1,7 @@
 ﻿using Avalonia;
 using System;
 
-namespace FlieManager;
+namespace FileManager;
 
 sealed class Program
 {

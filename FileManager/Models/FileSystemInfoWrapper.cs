@@ -76,4 +76,6 @@ public class FileSystemInfoWrapper : INotifyPropertyChanged
                 IgnoreInaccessible = true, RecurseSubdirectories = false
             }).Select(i => new FileSystemInfoWrapper(i)))
         : null;
+
+    public bool IsExpanded { get; set; }
 }

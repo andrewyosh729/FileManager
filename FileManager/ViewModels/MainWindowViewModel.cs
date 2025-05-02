@@ -28,7 +28,7 @@ public class MainWindowViewModel : ViewModelBase
                 {
                     new HierarchicalExpanderColumn<FileSystemInfoWrapper>(
                         new TextColumn<FileSystemInfoWrapper, string>("Name", info => info.FileSystemInfo.Name),
-                        info => info.Children),
+                        info => info.Children, null, wrapper => wrapper.IsExpanded),
                     new TemplateColumn<FileSystemInfoWrapper>("Size", new FuncDataTemplate<FileSystemInfoWrapper>(
                         (_, _) =>
                         {

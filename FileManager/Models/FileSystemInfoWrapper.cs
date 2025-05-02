@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.ComponentModel;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -52,6 +53,8 @@ public class FileSystemInfoWrapper : INotifyPropertyChanged
         }
     }
 
+    public string LastWriteTimeString => FileSystemInfo.LastWriteTime.ToString(CultureInfo.CurrentCulture);
+    
     public event PropertyChangedEventHandler? PropertyChanged;
 
     protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)

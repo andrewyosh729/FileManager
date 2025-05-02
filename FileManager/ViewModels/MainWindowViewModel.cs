@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System.Globalization;
+using System.IO;
 using Avalonia.Controls;
 using Avalonia.Controls.Models.TreeDataGrid;
 using Avalonia.Controls.Primitives;
@@ -63,7 +64,9 @@ public class MainWindowViewModel : ViewModelBase
                             grid.Children.Add(progressBar);
                             grid.Children.Add(textBlock);
                             return grid;
-                        }))
+                        })),
+                    new TextColumn<FileSystemInfoWrapper, string>("Last Modified",
+                        wrapper => wrapper.LastWriteTimeString)
                 }
             };
     }

@@ -1,5 +1,8 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel;
+using System.Threading.Tasks;
+using Avalonia.Media.TextFormatting.Unicode;
 using FileManager.Models;
 using FileManager.ViewModels;
 
@@ -7,6 +10,8 @@ namespace FileManager.Collections;
 
 public class FileSystemInfoChildren : ConcurrentObservableList<FileSystemInfoWrapper>
 {
+    private ThrottledTaskQueue ThrottledTaskQueue { get; } = new();
+
     public FileSystemInfoChildren(IEnumerable<FileSystemInfoWrapper> collection) : base(collection)
     {
         foreach (var item in this)
@@ -22,8 +27,9 @@ public class FileSystemInfoChildren : ConcurrentObservableList<FileSystemInfoWra
             return;
         }
 
-        Sort((f1, f2) => -Comparison(f1, f2));
+        ThrottledTaskQueue.QueueWork(() => Task.Run (() => Sort((f1, f2) => -Comparison(f1, f2))));
     }
+
 
     private int Comparison(object x, object y)
     {
@@ -48,5 +54,37 @@ public class FileSystemInfoChildren : ConcurrentObservableList<FileSystemInfoWra
         }
 
         return 0;
+    }
+}
+
+public class ThrottledTaskQueue
+{
+    private Task? MainTask { get; set; }
+    private bool HasContinuationQueued { get; set; }
+    private object LockObject { get; } = new();
+
+    public void QueueWork(Func<Task> work)
+    {
+        lock (LockObject)
+        {
+            if (MainTask == null || MainTask.IsCompleted)
+            {
+                // Run immediately
+                MainTask = work();
+                HasContinuationQueued = false;
+            }
+            else if (!HasContinuationQueued)
+            {
+                // Queue continuation only once
+                HasContinuationQueued = true;
+                MainTask = MainTask.ContinueWith(_ => { return work(); }).Unwrap().ContinueWith(_ =>
+                {
+                    lock (LockObject)
+                    {
+                        HasContinuationQueued = false;
+                    }
+                });
+            }
+        }
     }
 }

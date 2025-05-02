@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 
-namespace FileManager.Collections;
+namespace FileManager.Utils;
 
 public class ThrottledTaskQueue
 {

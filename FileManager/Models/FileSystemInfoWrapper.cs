@@ -3,9 +3,11 @@ using System.ComponentModel;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Reactive.PlatformServices;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Avalonia.LogicalTree;
 using Avalonia.Threading;
 using FileManager.Collections;
 using FileManager.Utils;
@@ -15,28 +17,49 @@ namespace FileManager.Models;
 public class FileSystemInfoWrapper : INotifyPropertyChanged
 {
     public FileSystemInfo FileSystemInfo { get; }
-    private string m_FileSizeString = "Calculating...";
 
-    private object LockObject { get; } = new();
+
     public FileSystemInfoWrapper(FileSystemInfo fileSystemInfo)
     {
         FileSystemInfo = fileSystemInfo;
-        Task.Run(() => FileSize = GetFileSize());
+        Task.Run(PopulateChildren);
+        Task.Run(GetFileSizeAsync);
     }
 
-    private long GetFileSize()
+    private TaskCompletionSource<bool> ChildrenPopulated { get; } = new();
+
+    private TaskCompletionSource<bool> FileSizePopulated { get; } = new();
+
+    private async Task GetFileSizeAsync()
     {
         if (FileSystemInfo is FileInfo fileInfo)
         {
-            return fileInfo.Length;
+            try
+            {
+                FileSize = fileInfo.Length;
+            }
+            finally
+            {
+                FileSizePopulated.TrySetResult(true);
+            }
         }
 
-        return ((DirectoryInfo)FileSystemInfo).GetFiles("*", new EnumerationOptions()
-            {
-                RecurseSubdirectories = true,
-                IgnoreInaccessible = true
-            })
-            .Sum(info => info.Length);
+        await ChildrenPopulated.Task;
+        await Task.WhenAll(Children.Select(c => c.FileSizePopulated.Task));
+        long sum = 0;
+        foreach (FileSystemInfoWrapper child in Children)
+        {
+            sum += child.FileSize.Value;
+        }
+
+        try
+        {
+            FileSize = sum;
+        }
+        finally
+        {
+            FileSizePopulated.TrySetResult(true);
+        }
     }
 
     public string FileSizeString => FileSize.HasValue ? FileSize.Value.ToReadableByteString() : "Calculating...";
@@ -62,7 +85,7 @@ public class FileSystemInfoWrapper : INotifyPropertyChanged
 
     protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
     {
-        Dispatcher.UIThread.Post(() => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName)));
+         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 
     protected bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
@@ -73,31 +96,10 @@ public class FileSystemInfoWrapper : INotifyPropertyChanged
         return true;
     }
 
-    private FileSystemInfoChildren m_Children = new();
-
-    public FileSystemInfoChildren Children
-    {
-        get
-        {
-            PopulateChildren();
-            return m_Children;
-        }
-    }
-
-    private bool ChildrenPopulated;
+    public FileSystemInfoChildren Children { get; } = new();
 
     private void PopulateChildren()
     {
-        lock (LockObject)
-        {
-            if (ChildrenPopulated)
-            {
-                return;
-            }
-
-            ChildrenPopulated = true;
-        }
-
         if (FileSystemInfo is not DirectoryInfo directoryInfo)
         {
             return;
@@ -111,6 +113,8 @@ public class FileSystemInfoWrapper : INotifyPropertyChanged
         {
             Children.Add(item);
         }
+
+        ChildrenPopulated.TrySetResult(true);
     }
 
 

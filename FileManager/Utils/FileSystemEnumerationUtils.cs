@@ -24,4 +24,29 @@ public static class FileSystemEnumerationUtils
         );
         return enumerable;
     }
+    public static  int SortComparison(object x, object y)
+    {
+        if (x is not FileSystemInfoWrapper f1 || y is not FileSystemInfoWrapper f2)
+        {
+            return 0;
+        }
+
+        if (f1.FileSize.HasValue && f2.FileSize.HasValue)
+        {
+            return f1.FileSize.Value.CompareTo(f2.FileSize.Value);
+        }
+
+        if (f1.FileSize.HasValue)
+        {
+            return 1;
+        }
+
+        if (f2.FileSize.HasValue)
+        {
+            return -1;
+        }
+
+        return 0;
+    }
+    
 }

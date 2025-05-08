@@ -5,6 +5,7 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace FileManager.Collections;
@@ -13,6 +14,24 @@ public class ConcurrentObservableList<T> : ObservableList, IList<T>, INotifyColl
 {
     private object LockObject { get; } = new();
 
+    public void AddRange(IEnumerable<T> items, CancellationToken? token = null)
+    {
+        lock (LockObject)
+        {
+            foreach (T item in items)
+            {
+                if (token.HasValue && token.Value.IsCancellationRequested)
+                {
+                    return;
+                }
+
+                ((IList)this).Add(item);
+            }
+        }
+
+        CollectionChanged?.Invoke(this,
+            new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+    }
 
     public virtual void Add(T item)
     {

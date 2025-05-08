@@ -30,37 +30,14 @@ public class FileSystemInfoChildren : ConcurrentObservableList<FileSystemInfoWra
             return;
         }
 
-        ThrottledTaskQueue.QueueWork(() => Task.Run(() => Sort((f1, f2) => -Comparison(f1, f2))));
+        ThrottledTaskQueue.QueueWork(() => Task.Run(() => Sort((f1, f2) => -FileSystemEnumerationUtils.SortComparison(f1, f2))));
     }
 
     public void Sort()
     {
-        ThrottledTaskQueue.QueueWork(() => Task.Run(() => Sort((f1, f2) => -Comparison(f1, f2))));
+        ThrottledTaskQueue.QueueWork(() => Task.Run(() => Sort((f1, f2) => -FileSystemEnumerationUtils.SortComparison(f1, f2))));
     }
 
 
-    private int Comparison(object x, object y)
-    {
-        if (x is not FileSystemInfoWrapper f1 || y is not FileSystemInfoWrapper f2)
-        {
-            return 0;
-        }
-
-        if (f1.FileSize.HasValue && f2.FileSize.HasValue)
-        {
-            return f1.FileSize.Value.CompareTo(f2.FileSize.Value);
-        }
-
-        if (f1.FileSize.HasValue)
-        {
-            return 1;
-        }
-
-        if (f2.FileSize.HasValue)
-        {
-            return -1;
-        }
-
-        return 0;
-    }
+   
 }

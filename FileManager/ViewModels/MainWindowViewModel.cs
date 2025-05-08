@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -19,6 +21,7 @@ namespace FileManager.ViewModels;
 public class MainWindowViewModel : ViewModelBase
 {
     private HierarchicalTreeDataGridSource<FileSystemInfoWrapper> m_FilesAndDirectories;
+    private FileSystemInfoWrapper RootFileSystemInfoWrapper { get; set; }
 
     public HierarchicalTreeDataGridSource<FileSystemInfoWrapper> FilesAndDirectories
     {
@@ -33,11 +36,46 @@ public class MainWindowViewModel : ViewModelBase
 
     public MainWindowViewModel()
     {
-        Task.Run(() => RefreshView(new DriveInfo("C"), null));
+        DriveInfo driveInfo = new DriveInfo("C");
+        RootFileSystemInfoWrapper = new FileSystemInfoWrapper(driveInfo.RootDirectory);
+        Task.Run(() => RefreshView(driveInfo, null));
     }
 
 
     private CancellationTokenSource? CancellationTokenSource { get; set; }
+
+
+    private IEnumerable<FileSystemInfoWrapper> SearchForFiles(FileSystemInfoWrapper root, string searchTerm,
+        CancellationToken token)
+    {
+        List<FileSystemInfoWrapper> matches = new List<FileSystemInfoWrapper>();
+        Queue<FileSystemInfoWrapper> queue = new Queue<FileSystemInfoWrapper>();
+        queue.Enqueue(root);
+        while (queue.TryDequeue(out FileSystemInfoWrapper wrapper))
+        {
+            if (token.IsCancellationRequested)
+            {
+                return null;
+            }
+            
+            if (wrapper.FileSystemInfo.Name.Contains(searchTerm))
+            {
+                matches.Add(wrapper);
+            }
+
+
+            if (wrapper.FileSystemInfo is DirectoryInfo)
+            {
+                foreach (FileSystemInfoWrapper fileSystemInfoWrapper in wrapper.Children)
+                {
+                    queue.Enqueue(fileSystemInfoWrapper);
+                }
+            }
+        }
+
+        matches.Sort((f1, f2) => -FileSystemEnumerationUtils.SortComparison(f1, f2));
+        return matches;
+    }
 
     public void RefreshView(DriveInfo driveInfo, string? search)
     {
@@ -51,32 +89,6 @@ public class MainWindowViewModel : ViewModelBase
         CancellationTokenSource = new CancellationTokenSource();
 
         CancellationToken token = CancellationTokenSource.Token;
-        FileSystemInfoChildren children = new FileSystemInfoChildren();
-        if (!string.IsNullOrWhiteSpace(search))
-        {
-            Task.Run(() =>
-            {
-                foreach (FileSystemInfoWrapper item in FileSystemEnumerationUtils.EnumerateFileSystemEntries(
-                             driveInfo.RootDirectory.FullName, new EnumerationOptions()
-                             {
-                                 RecurseSubdirectories = true,
-                                 IgnoreInaccessible = true
-                             }).AsParallel())
-                {
-                    if (token.IsCancellationRequested)
-                    {
-                        return Task.CompletedTask;
-                    }
-
-                    if (item.FileSystemInfo.Name.Contains(search))
-                    {
-                        children.Add(item);
-                    }
-                }
-
-                return Task.CompletedTask;
-            });
-        }
 
         if (token.IsCancellationRequested)
         {
@@ -86,8 +98,8 @@ public class MainWindowViewModel : ViewModelBase
         FilesAndDirectories =
             new HierarchicalTreeDataGridSource<FileSystemInfoWrapper>(
                 !string.IsNullOrWhiteSpace(search)
-                    ? children
-                    : [new FileSystemInfoWrapper(driveInfo.RootDirectory)])
+                    ? SearchForFiles(RootFileSystemInfoWrapper, search, token)
+                    : [RootFileSystemInfoWrapper])
             {
                 Columns =
                 {

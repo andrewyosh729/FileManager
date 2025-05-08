@@ -17,6 +17,7 @@ public class FileSystemInfoWrapper : INotifyPropertyChanged
     public FileSystemInfo FileSystemInfo { get; }
     private string m_FileSizeString = "Calculating...";
 
+    private object LockObject { get; } = new();
     public FileSystemInfoWrapper(FileSystemInfo fileSystemInfo)
     {
         FileSystemInfo = fileSystemInfo;
@@ -87,7 +88,7 @@ public class FileSystemInfoWrapper : INotifyPropertyChanged
 
     private void PopulateChildren()
     {
-        lock (Children)
+        lock (LockObject)
         {
             if (ChildrenPopulated)
             {

@@ -1,10 +1,7 @@
-﻿using System.Collections.Generic;
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Threading.Tasks;
-using Avalonia.Media.TextFormatting.Unicode;
 using FileManager.Models;
 using FileManager.Utils;
-using FileManager.ViewModels;
 
 namespace FileManager.Collections;
 
@@ -12,13 +9,19 @@ public class FileSystemInfoChildren : ConcurrentObservableList<FileSystemInfoWra
 {
     private ThrottledTaskQueue ThrottledTaskQueue { get; } = new();
 
-    public FileSystemInfoChildren(IEnumerable<FileSystemInfoWrapper> collection) : base(collection)
+    public override void Add(FileSystemInfoWrapper item)
     {
-        foreach (var item in this)
-        {
-            item.PropertyChanged += OnItemPropertyChanged;
-        }
+        item.PropertyChanged += OnItemPropertyChanged;
+        base.Add(item);
+        Sort();
     }
+
+    public override bool Remove(FileSystemInfoWrapper item)
+    {
+        item.PropertyChanged -= OnItemPropertyChanged;
+        return base.Remove(item);
+    }
+
 
     private void OnItemPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -27,7 +30,12 @@ public class FileSystemInfoChildren : ConcurrentObservableList<FileSystemInfoWra
             return;
         }
 
-        ThrottledTaskQueue.QueueWork(() => Task.Run (() => Sort((f1, f2) => -Comparison(f1, f2))));
+        ThrottledTaskQueue.QueueWork(() => Task.Run(() => Sort((f1, f2) => -Comparison(f1, f2))));
+    }
+
+    public void Sort()
+    {
+        ThrottledTaskQueue.QueueWork(() => Task.Run(() => Sort((f1, f2) => -Comparison(f1, f2))));
     }
 
 

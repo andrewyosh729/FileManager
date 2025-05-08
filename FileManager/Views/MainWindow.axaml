@@ -16,10 +16,8 @@
     </Design.DataContext>
 
     <DockPanel>
-        <Menu DockPanel.Dock="Top">
-            <MenuItem Header="Test" Background="LightGray"></MenuItem>
-        </Menu>
-        <TreeDataGrid Source="{Binding FilesAndDirectories}"></TreeDataGrid>
+        <TextBox Watermark="Search..." DockPanel.Dock="Top" Margin="10" TextChanged="InputElement_OnTextInput"></TextBox>
+        <TreeDataGrid Source="{Binding FilesAndDirectories}" DockPanel.Dock="Top"></TreeDataGrid>
     </DockPanel>
 
 </Window>

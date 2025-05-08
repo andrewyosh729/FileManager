@@ -2,50 +2,42 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 
 namespace FileManager.Collections;
 
-public class ConcurrentObservableList<T> : ObservableList, IList<T>, INotifyCollectionChanged
-    where T : class
+public class ConcurrentObservableList<T> : ObservableList, IList<T>, INotifyCollectionChanged, INotifyPropertyChanged
 {
     private object LockObject { get; } = new();
 
-    public ConcurrentObservableList(IEnumerable<T> collection)
-    {
-        foreach (var item in collection)
-        {
-            Add(item);
-        }
-    }
 
-
-    public void Add(T item)
+    public virtual void Add(T item)
     {
+        int index;
         lock (LockObject)
         {
-            ((IList)this).Add(item);
+            index = ((IList)this).Add(item);
         }
+
+        CollectionChanged?.Invoke(this,
+            new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, item, index));
     }
 
     public void Clear()
     {
-        List<T> backingList = new List<T>();
         lock (LockObject)
         {
             foreach (var item in this)
             {
-                backingList.Add((T)item);
+                Remove(item);
             }
-
-            ((IList)this).Clear();
         }
 
-        foreach (var item in backingList)
-        {
-            CollectionChanged?.Invoke(this,
-                new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, item));
-        }
+        CollectionChanged?.Invoke(this,
+            new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
     }
 
     public bool Contains(T item)
@@ -64,7 +56,7 @@ public class ConcurrentObservableList<T> : ObservableList, IList<T>, INotifyColl
         }
     }
 
-    public bool Remove(T item)
+    public virtual bool Remove(T item)
     {
         bool contains = Contains(item);
 
@@ -73,6 +65,8 @@ public class ConcurrentObservableList<T> : ObservableList, IList<T>, INotifyColl
             if (contains)
             {
                 ((IList)this).Remove(item);
+
+                OnPropertyChanged(nameof(Count));
             }
         }
 
@@ -81,6 +75,7 @@ public class ConcurrentObservableList<T> : ObservableList, IList<T>, INotifyColl
             CollectionChanged?.Invoke(this,
                 new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, item));
         }
+
 
         return contains;
     }
@@ -122,17 +117,17 @@ public class ConcurrentObservableList<T> : ObservableList, IList<T>, INotifyColl
         T? temp;
         lock (LockObject)
         {
-            temp = ((IList)this)[index] as T;
+            temp = (T)((IList)this)[index];
             if (temp != null)
             {
                 BackingList.RemoveAt(index);
             }
-        }
 
-        if (temp != null)
-        {
-            CollectionChanged?.Invoke(this,
-                new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, temp));
+            if (temp != null)
+            {
+                CollectionChanged?.Invoke(this,
+                    new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, temp));
+            }
         }
     }
 
@@ -149,8 +144,6 @@ public class ConcurrentObservableList<T> : ObservableList, IList<T>, INotifyColl
         {
             lock (LockObject)
             {
-                if (((IList)this)[index] == value) return;
-
                 ((IList)this)[index] = value;
             }
 
@@ -174,7 +167,10 @@ public class ConcurrentObservableList<T> : ObservableList, IList<T>, INotifyColl
 
     public IEnumerator<T> GetEnumerator()
     {
-        return new ConcurrentObservableListEnumerator(BackingList.Cast<T>().ToArray());
+        lock (LockObject)
+        {
+            return new ConcurrentObservableListEnumerator(BackingList.Cast<T>().ToArray());
+        }
     }
 
     private struct ConcurrentObservableListEnumerator : IEnumerator<T>
@@ -205,5 +201,12 @@ public class ConcurrentObservableList<T> : ObservableList, IList<T>, INotifyColl
         public void Dispose()
         {
         }
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }

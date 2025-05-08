@@ -4,7 +4,9 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Threading.Tasks;
+using Avalonia.Threading;
 using FileManager.Collections;
 using FileManager.Utils;
 
@@ -54,12 +56,12 @@ public class FileSystemInfoWrapper : INotifyPropertyChanged
     }
 
     public string LastWriteTimeString => FileSystemInfo.LastWriteTime.ToString(CultureInfo.CurrentCulture);
-    
+
     public event PropertyChangedEventHandler? PropertyChanged;
 
     protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
     {
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        Dispatcher.UIThread.Post(() => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName)));
     }
 
     protected bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
@@ -70,15 +72,48 @@ public class FileSystemInfoWrapper : INotifyPropertyChanged
         return true;
     }
 
-    private FileSystemInfoChildren? m_Children;
+    private FileSystemInfoChildren m_Children = new();
 
-    public FileSystemInfoChildren? Children => m_Children ??= FileSystemInfo is DirectoryInfo directoryInfo
-        ? new FileSystemInfoChildren(directoryInfo.EnumerateFileSystemInfos("*",
-            new EnumerationOptions()
+    public FileSystemInfoChildren Children
+    {
+        get
+        {
+            PopulateChildren();
+            return m_Children;
+        }
+    }
+
+    private bool ChildrenPopulated;
+
+    private void PopulateChildren()
+    {
+        lock (Children)
+        {
+            if (ChildrenPopulated)
             {
-                IgnoreInaccessible = true, RecurseSubdirectories = false
-            }).Select(i => new FileSystemInfoWrapper(i)))
-        : null;
+                return;
+            }
+
+            ChildrenPopulated = true;
+        }
+
+        if (FileSystemInfo is not DirectoryInfo directoryInfo)
+        {
+            return;
+        }
+
+        foreach (var item in FileSystemEnumerationUtils.EnumerateFileSystemEntries(directoryInfo.FullName,
+                     new EnumerationOptions()
+                     {
+                         IgnoreInaccessible = true
+                     }).AsParallel())
+        {
+            Children.Add(item);
+        }
+    }
+
 
     public bool IsExpanded { get; set; }
+
+    public bool IsDirectory => FileSystemInfo is DirectoryInfo;
 }

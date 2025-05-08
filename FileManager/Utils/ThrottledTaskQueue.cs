@@ -9,6 +9,10 @@ public class ThrottledTaskQueue
     private bool HasContinuationQueued { get; set; }
     private object LockObject { get; } = new();
 
+    private Func<Task>? PendingContinuation { get; set; }
+
+    private bool IsContinuationChained { get; set; }
+
     public void QueueWork(Func<Task> work)
     {
         lock (LockObject)
@@ -17,19 +21,33 @@ public class ThrottledTaskQueue
             {
                 // Run immediately
                 MainTask = work();
-                HasContinuationQueued = false;
+                PendingContinuation = null;
+                IsContinuationChained = false;
             }
-            else if (!HasContinuationQueued)
+            else
             {
-                // Queue continuation only once
-                HasContinuationQueued = true;
-                MainTask = MainTask.ContinueWith(_ => work()).Unwrap().ContinueWith(_ =>
+                // Replace existing continuation
+                PendingContinuation = work;
+
+                if (!IsContinuationChained)
                 {
-                    lock (LockObject)
+                    // Chain one continuation only
+                    IsContinuationChained = true;
+
+                    MainTask = MainTask.ContinueWith(_ =>
                     {
-                        HasContinuationQueued = false;
-                    }
-                });
+                        Func<Task>? continuation;
+
+                        lock (LockObject)
+                        {
+                            continuation = PendingContinuation;
+                            PendingContinuation = null;
+                            IsContinuationChained = false;
+                        }
+
+                        return continuation?.Invoke() ?? Task.CompletedTask;
+                    }).Unwrap();
+                }
             }
         }
     }

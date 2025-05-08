@@ -58,7 +58,7 @@ public class MainWindowViewModel : ViewModelBase
                 return null;
             }
             
-            if (wrapper.FileSystemInfo.Name.Contains(searchTerm))
+            if (wrapper.FileSystemInfo.Name.Contains(searchTerm, StringComparison.CurrentCultureIgnoreCase))
             {
                 matches.Add(wrapper);
             }

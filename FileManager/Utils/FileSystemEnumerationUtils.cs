@@ -13,18 +13,47 @@ using FileManager.Models;
 
 namespace FileManager.Utils;
 
+public readonly struct FileSystemInfoLight
+{
+    public FileSystemInfoLight(DirectoryInfo directoryInfo)
+    {
+        Name = new ReadOnlyMemory<char>(directoryInfo.Name.ToCharArray());
+        FileSizeBytes = null;
+        LastWriteTime = directoryInfo.LastWriteTimeUtc.ToLocalTime();
+        IsDirectory = true;
+        FullName =  new ReadOnlyMemory<char>(directoryInfo.FullName.ToCharArray());;
+    }
+
+    public FileSystemInfoLight(FileSystemEntry entry)
+    {
+        Name = new ReadOnlyMemory<char>(entry.FileName.ToArray());
+        FileSizeBytes = entry.Length;
+        LastWriteTime = entry.LastWriteTimeUtc.LocalDateTime;
+        IsDirectory = entry.IsDirectory;
+        char[] separator = new char[] { '\\' };
+        FullName = new ReadOnlyMemory<char>(entry.Directory.ToArray().Concat(separator).Concat(entry.FileName.ToArray()).ToArray());
+    }
+
+    public ReadOnlyMemory<char> Name { get; }
+    public ReadOnlyMemory<char> FullName { get; }
+    public long? FileSizeBytes { get; }
+    public DateTimeOffset LastWriteTime { get; }
+    public bool IsDirectory { get; }
+}
+
 public static class FileSystemEnumerationUtils
 {
     public static IEnumerable<FileSystemInfoWrapper> EnumerateFileSystemEntries(string fullPath,
         EnumerationOptions enumerationOptions)
     {
         FileSystemEnumerable<FileSystemInfoWrapper> enumerable = new FileSystemEnumerable<FileSystemInfoWrapper>(
-            fullPath, (ref FileSystemEntry entry) => new FileSystemInfoWrapper(entry.ToFileSystemInfo()),
+            fullPath, (ref FileSystemEntry entry) => new FileSystemInfoWrapper(new FileSystemInfoLight(entry)),
             enumerationOptions
         );
         return enumerable;
     }
-    public static  int SortComparison(object x, object y)
+
+    public static int SortComparison(object x, object y)
     {
         if (x is not FileSystemInfoWrapper f1 || y is not FileSystemInfoWrapper f2)
         {
@@ -48,5 +77,4 @@ public static class FileSystemEnumerationUtils
 
         return 0;
     }
-    
 }

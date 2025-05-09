@@ -37,7 +37,7 @@ public class MainWindowViewModel : ViewModelBase
     public MainWindowViewModel()
     {
         DriveInfo driveInfo = new DriveInfo("C");
-        RootFileSystemInfoWrapper = new FileSystemInfoWrapper(driveInfo.RootDirectory);
+        RootFileSystemInfoWrapper = new FileSystemInfoWrapper(new FileSystemInfoLight(driveInfo.RootDirectory));
         Task.Run(() => RefreshView(driveInfo, null));
     }
 
@@ -57,14 +57,14 @@ public class MainWindowViewModel : ViewModelBase
             {
                 return null;
             }
-            
-            if (wrapper.FileSystemInfo.Name.Contains(searchTerm, StringComparison.CurrentCultureIgnoreCase))
-            {
-                matches.Add(wrapper);
-            }
+            //
+            // if (wrapper.FileSystemInfo.Name.Contains(searchTerm, StringComparison.CurrentCultureIgnoreCase))
+            // {
+            //     matches.Add(wrapper);
+            // }
 
 
-            if (wrapper.FileSystemInfo is DirectoryInfo)
+            if (wrapper.FileSystemInfo.IsDirectory)
             {
                 foreach (FileSystemInfoWrapper fileSystemInfoWrapper in wrapper.Children)
                 {
@@ -104,7 +104,7 @@ public class MainWindowViewModel : ViewModelBase
                 Columns =
                 {
                     new HierarchicalExpanderColumn<FileSystemInfoWrapper>(
-                        new TextColumn<FileSystemInfoWrapper, string>("Name", info => info.FileSystemInfo.Name),
+                        new TextColumn<FileSystemInfoWrapper, ReadOnlyMemory<char>>("Name", info => info.FileSystemInfo.Name),
                         info => info.Children, wrapper => wrapper.IsDirectory, wrapper => wrapper.IsExpanded),
                     new TemplateColumn<FileSystemInfoWrapper>("Size",
                         new FuncDataTemplate<FileSystemInfoWrapper>(

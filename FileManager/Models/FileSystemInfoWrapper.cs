@@ -16,10 +16,10 @@ namespace FileManager.Models;
 
 public class FileSystemInfoWrapper : INotifyPropertyChanged
 {
-    public FileSystemInfo FileSystemInfo { get; }
+    public FileSystemInfoLight FileSystemInfo { get; }
 
 
-    public FileSystemInfoWrapper(FileSystemInfo fileSystemInfo)
+    public FileSystemInfoWrapper(FileSystemInfoLight fileSystemInfo)
     {
         FileSystemInfo = fileSystemInfo;
         Task.Run(PopulateChildren);
@@ -32,11 +32,11 @@ public class FileSystemInfoWrapper : INotifyPropertyChanged
 
     private async Task GetFileSizeAsync()
     {
-        if (FileSystemInfo is FileInfo fileInfo)
+        if (!FileSystemInfo.IsDirectory)
         {
             try
             {
-                FileSize = fileInfo.Length;
+                FileSize = FileSystemInfo.FileSizeBytes;
             }
             finally
             {
@@ -85,7 +85,7 @@ public class FileSystemInfoWrapper : INotifyPropertyChanged
 
     protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
     {
-         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 
     protected bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
@@ -100,12 +100,12 @@ public class FileSystemInfoWrapper : INotifyPropertyChanged
 
     private void PopulateChildren()
     {
-        if (FileSystemInfo is not DirectoryInfo directoryInfo)
+        if (!FileSystemInfo.IsDirectory)
         {
             return;
         }
 
-        foreach (var item in FileSystemEnumerationUtils.EnumerateFileSystemEntries(directoryInfo.FullName,
+        foreach (FileSystemInfoWrapper item in FileSystemEnumerationUtils.EnumerateFileSystemEntries(FileSystemInfo.FullName.ToString(),
                      new EnumerationOptions()
                      {
                          IgnoreInaccessible = true
@@ -120,5 +120,5 @@ public class FileSystemInfoWrapper : INotifyPropertyChanged
 
     public bool IsExpanded { get; set; }
 
-    public bool IsDirectory => FileSystemInfo is DirectoryInfo;
+    public bool IsDirectory => FileSystemInfo.IsDirectory;
 }
